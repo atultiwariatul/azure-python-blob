@@ -1,0 +1,44 @@
+<!-- <html>
+
+<body>
+    <form action="http://localhost:5000/upload" method="POST" enctype="multipart/form-data">
+        <input type="file" name="file" />
+        <input type="file" name="file" />
+        <input type="file" name="file" />
+        <input type="file" name="file" />
+        <input type="submit" />
+    </form>
+</body>
+
+</html> -->
+
+{% block title %}Upload{% endblock %}
+
+{% block main %}
+
+<div class="container">
+    <div class="row">
+        <div class="col">
+
+            <h1>Upload an image</h1>
+            <hr>
+
+            <form action="/upload" method="POST" enctype="multipart/form-data">
+
+                <div class="form-group">
+                    <label>Select image</label>
+                    <div class="btn-primary">
+                        <input type="file" class="custom-file-input" name="file" id="file" multiple>
+                        <label class="custom-file-label" for="image">Select image...</label>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Upload</button>
+
+            </form>
+
+        </div>
+    </div>
+</div>
+
+{% endblock %}
