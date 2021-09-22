@@ -67,7 +67,7 @@ def test():
 
 def save_blob_to_download_folder(file_name):
     blob_client = AzureBlobAdapter().get_blob_client(file_name)
-    download_file_path = os.path.join('downloads', file_name)
+    download_file_path = os.path.join('../downloads', file_name)
     print("\nDownloading blob to \n\t" + download_file_path)
     with open(download_file_path, "wb") as download_file:
         download_file.write(blob_client.download_blob().readall())
@@ -81,10 +81,10 @@ def save_file_to_local_folder():
     for file in files:
         local_file_name = "IN_CARE_" + str(uuid.uuid4()) + file.filename
         full_path_to_file = os.path.join(
-            'uploads', local_file_name)
+            '../uploads', local_file_name)
         print(" Full path to file {}".format(full_path_to_file))
         filename = secure_filename(local_file_name)
-        file.save(os.path.join('uploads', filename))
+        file.save(os.path.join('../uploads', filename))
         file.close()
         file_paths[filename] = full_path_to_file
 
@@ -92,5 +92,5 @@ def save_file_to_local_folder():
 
 
 def prepare_upload_dir():
-    if not os.path.exists('uploads'):
+    if not os.path.exists('../uploads'):
         os.makedirs(os.path(UPLOAD_FOLDER))

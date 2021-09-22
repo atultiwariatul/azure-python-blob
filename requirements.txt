@@ -1,6 +1,9 @@
 azure-storage-blob==12.8.1
 Flask==2.0.1
 Werkzeug
+flask-appconfig>=0.10
 flask-bootstrap
 flask-nav
 flask-debug
+flask-wtf
+email_validator

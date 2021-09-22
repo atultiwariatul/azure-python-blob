@@ -9,8 +9,8 @@ from flask import Blueprint, render_template, flash, redirect, url_for
 from flask_nav.elements import View
 from markupsafe import escape
 from apis.AzureBlobController import app_api
-from forms import SignupForm
-from nav import nav, ExtendedNavbar
+from .forms import SignupForm
+from .nav import nav, ExtendedNavbar
 
 frontend = Blueprint('frontend', __name__)
 frontend.register_blueprint(app_api)

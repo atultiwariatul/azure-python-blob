@@ -1,61 +1,53 @@
-from azure.storage.blob import BlobClient
-from flask import Flask, render_template, request, jsonify
-from werkzeug.utils import secure_filename
 import os
+import sys
 import uuid
-from services.AzureBlobAdapter import AzureBlobAdapter
-app_api = Flask(__name__)
-UPLOAD_FOLDER = 'uploads'
-DOWNLOAD_FOLDER = 'downloads'
-app_api.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app_api.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
-blob_client: BlobClient
 
-ALLOWED_EXTENSIONS = set(['txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'zip'])
+from azure.storage.blob import BlobClient
+from flask import Flask, render_template, request, jsonify, make_response, send_from_directory, send_file
+from werkzeug.utils import secure_filename
+
+sys.path.append(os.getcwd())
+from services.AzureBlobAdapter import AzureBlobAdapter
+
+# from create_app import create_app
+
+app = Flask(__name__)
+UPLOAD_FOLDER = '/tmp/uploads'
+DOWNLOAD_FOLDER = '/tmp/downloads'
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
+blob_client: BlobClient
+ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'zip'}
 
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
-@app_api.route('/uploader')
-def uploader_html():
-    return render_template('/upload.html')
-
-
-@app_api.route("/upload", methods=["POST"])
-def upload_file():
-    print("Uploading file...")
-    files_dict = save_file_to_local_folder()
-    try:
-        status = AzureBlobAdapter().upload(files_dict)
-        if status == True:
-            print('Upload successfull...')
-            return "Upload Success"
-        else:
-            print('UPload Failed.')
-            return "Failed..."
-    except Exception as err:
-        print("Oops! Try again...{}".format(err))
-
-
 def save_file_to_local_folder():
+    prepare_upload_dir()
     file_paths = {}
     files = request.files.getlist("files[]")
     for file in files:
-        local_file_name = "IN_CARE_" + str(uuid.uuid4()) + file.filename
+        # local_file_name = "IN_CARE_" + str(uuid.uuid4()) + file.filename
         full_path_to_file = os.path.join(
-            app_api.config['UPLOAD_FOLDER'], local_file_name)
+            app.config['UPLOAD_FOLDER'], file.filename)
         print(" Full path to file {}".format(full_path_to_file))
-        filename = secure_filename(local_file_name)
-        file.save(os.path.join(app_api.config['UPLOAD_FOLDER'], filename))
-        file.close()
+        filename = secure_filename(file.filename)
+        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+        # file.close()
         file_paths[filename] = full_path_to_file
     return file_paths
 
 
-@app_api.route('/python-flask-files-upload', methods=['POST'])
-def upload_fileee():
+@app.route('/favicon.ico')
+def favicon():
+    return send_from_directory(os.path.join(app.root_path, 'static'),
+                               'favicon.ico', mimetype='image/vnd.microsoft.icon')
+
+
+@app.route('/file-upload', methods=['POST'])
+def upload_file():
     if 'files[]' not in request.files:
         resp = jsonify({'message': 'No file part in the request'})
         resp.status_code = 400
@@ -72,8 +64,13 @@ def upload_fileee():
             files_dict = save_file_to_local_folder()
             print('Files Dict:')
             print(files_dict)
-            status = AzureBlobAdapter().upload(files_dict)
-            success = True
+            azure_response = AzureBlobAdapter().upload(files_dict)
+            print('Response:=> {}'.format(jsonify(azure_response)))
+            if azure_response != 'Success':
+                print('Reporting error to frontend')
+                errors[file.filename] = azure_response
+            else:
+                success = True
         else:
             errors[file.filename] = 'File type is not allowed'
 
@@ -87,37 +84,39 @@ def upload_fileee():
         resp.status_code = 201
         return resp
     else:
-        resp = jsonify(errors)
-        resp.status_code = 400
-        return resp
+        print('Coming in Else part: Returning Errors:')
+        return make_response(errors, 400)
 
+
+@app.route('/download', methods=['GET'])
 def download_file():
+    print("Download files....")
     args = request.args
     print(args)  # For debugging
     file_name = args['file_name']
     print("Downloading file....")
     save_blob_to_download_folder(file_name)
-    return "Downloaded to downloads folder."
+    # Return stream data
+    filename = save_blob_to_download_folder(file_name)
+    return send_file(filename, mimetype='application/octetstream')
 
 
-@app_api.route("/list", methods=["GET"])
+@app.route("/", methods=["GET"])
 def list_files():
-    #     print("listing files...")
-    #     # blobs = AzureBlobAdapter().list_blobs()
-    #     # return jsonify(blobs)
-    container = AzureBlobAdapter().getConfig('container_name')
+    container = AzureBlobAdapter().get_config('container_name')
     return render_template('blob_list.html', container=container)
 
 
-@app_api.route("/api/data", methods=["GET"])
+@app.route("/api/data", methods=["GET"])
 def data():
     return {'data': convert(AzureBlobAdapter().list_blobs())}
 
 
 def convert(a):
     data_arr = []
+    download_link = "<a id=\"link\" onclick=\"DownloadFile('{}')\" href=\"#\">Download</a>"
     for blob_name in a:
-        blob_dict = {'name': blob_name}
+        blob_dict = {'name': blob_name, 'download_url': download_link.format(blob_name)}
         # print('Blob name in convert:'+blob_name)
         data_arr.append(blob_dict)
     return data_arr
@@ -125,25 +124,32 @@ def convert(a):
 
 def save_blob_to_download_folder(file_name):
     blob_client = AzureBlobAdapter().get_blob_client(file_name)
-    download_file_path = os.path.join('downloads', file_name)
+    prepare_download_dir()
+    download_file_path = os.path.join('/tmp/downloads', file_name)
     print("\nDownloading blob to \n\t" + download_file_path)
     with open(download_file_path, "wb") as download_file_local:
         download_file_local.write(blob_client.download_blob().readall())
-    return True
+    return download_file_path
 
 
 def prepare_upload_dir():
-    if not os.path.exists('uploads'):
-        os.makedirs(os.path(UPLOAD_FOLDER))
+    print('Preparing upload folder.')
+    if not os.path.exists(UPLOAD_FOLDER):
+        print('upload folder doesnt exists .')
+        os.makedirs(UPLOAD_FOLDER)
+    else:
+        print('Upload folder already exits.')
 
 
-class CustomBlob():
-    def __init__(self):
-        pass
+def prepare_download_dir():
+    print('Preparing Download folder.')
+    if not os.path.exists(DOWNLOAD_FOLDER):
+        print('Download folder doesnt exists .')
+        os.makedirs(DOWNLOAD_FOLDER)
+    else:
+        print('Download folder already exits.')
 
-    name = ''
 
-    def to_dict(self):
-        return {
-            'name': self.name,
-        }
+# app = create_app()
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)
