@@ -5,13 +5,12 @@
 # You can find out more about blueprints at
 # http://flask.pocoo.org/docs/blueprints/
 
-from flask import Blueprint, app, render_template, flash, redirect, url_for
-from flask_bootstrap import __version__ as FLASK_BOOTSTRAP_VERSION
-from flask_nav.elements import Navbar, View, Subgroup, Link, Text, Separator
+from flask import Blueprint, render_template, flash, redirect, url_for
+from flask_nav.elements import View
 from markupsafe import escape
-from .AzureBlobController import app_api
-from .forms import SignupForm
-from .nav import nav, ExtendedNavbar
+from apis.AzureBlobController import app_api
+from forms import SignupForm
+from nav import nav, ExtendedNavbar
 
 frontend = Blueprint('frontend', __name__)
 frontend.register_blueprint(app_api)
@@ -56,7 +55,7 @@ def index():
 
 @frontend.route('/uploader')
 def uploader_html():
-    return render_template('/upload.html')
+    return render_template('upload.html')
 
 # Shows a long signup form, demonstrating form rendering.
 

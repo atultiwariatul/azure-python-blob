@@ -5,9 +5,9 @@ from werkzeug.utils import secure_filename
 from flask import request
 import os
 
-app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = './uploads'
-app.config['SECRET_KEY'] = 'catchmeifyoucan'
+app_upload_form = Flask(__name__)
+app_upload_form.config['UPLOAD_FOLDER'] = './uploads'
+app_upload_form.config['SECRET_KEY'] = 'catchmeifyoucan'
 
 
 class ChangeForm(FlaskForm):
@@ -16,7 +16,7 @@ class ChangeForm(FlaskForm):
     submit = SubmitField('Save')
 
 
-@app.route('/change', methods=['GET', 'POST'])
+@app_upload_form.route('/change', methods=['GET', 'POST'])
 def form():
     fUp = FileUpload()  # File Upload class - detailed below.
     chgForm = ChangeForm()
@@ -47,10 +47,10 @@ class FileUpload():
         elif file_name and self.allowed_files(file_name):
             secure_file_name = secure_filename(file_name)
             file.save(os.path.join(
-                app.config['UPLOAD_FOLDER'], 'Normal Changes Docs\\' + secure_file_name))
+                app_upload_form.config['UPLOAD_FOLDER'], 'Normal Changes Docs\\' + secure_file_name))
 
-        return str(os.path.join(app.config['UPLOAD_FOLDER'], 'Normal Changes Docs\\' + secure_file_name))
+        return str(os.path.join(app_upload_form.config['UPLOAD_FOLDER'], 'Normal Changes Docs\\' + secure_file_name))
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app_upload_form.run(debug=True)
