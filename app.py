@@ -1,21 +1,27 @@
 import os
 import sys
-import uuid
-
 from azure.storage.blob import BlobClient
 from flask import Flask, render_template, request, jsonify, make_response, send_from_directory, send_file
 from werkzeug.utils import secure_filename
+from flask_session import Session
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 sys.path.append(os.getcwd())
+from login_app import login_api
+import app_config
 from services.AzureBlobAdapter import AzureBlobAdapter
 
 # from create_app import create_app
 
 app = Flask(__name__)
+app.config.from_object(app_config)
+app.register_blueprint(login_api)
+Session(app)
 UPLOAD_FOLDER = '/tmp/uploads'
 DOWNLOAD_FOLDER = '/tmp/downloads'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
+app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 blob_client: BlobClient
 ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'zip'}
 
@@ -101,7 +107,7 @@ def download_file():
     return send_file(filename, mimetype='application/octetstream')
 
 
-@app.route("/", methods=["GET"])
+@app.route("/list", methods=["GET"])
 def list_files():
     container = AzureBlobAdapter().get_config('container_name')
     return render_template('blob_list.html', container=container)
@@ -149,7 +155,7 @@ def prepare_download_dir():
     else:
         print('Download folder already exits.')
 
-
+# app.jinja_env.globals.update(_build_auth_code_flow=_build_auth_code_flow)  # Used in template
 # app = create_app()
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)

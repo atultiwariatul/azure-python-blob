@@ -1,6 +1,8 @@
-.venv/**
+venv/**
 .idea/**
 .vscode/**
 __pycache__/**
 .deployment
 **/__pycache__/**
+*.backup
+flask_session/**
